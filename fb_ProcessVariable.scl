@@ -1,0 +1,91 @@
+﻿FUNCTION_BLOCK "fb_ProcessVariable"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      pvIn : Int;
+      lowScale : Real;
+      highScale : Real;
+      hWarning : Real;
+      hAlarm : Real;
+      dbTime : Time;
+   END_VAR
+
+   VAR_OUTPUT 
+      pvEng : Int := 0;
+      pvMa : Real := 0.0;
+      pvScaled : Real := 0.0;
+      warning : Bool;
+      alarm : Bool;
+   END_VAR
+
+   VAR 
+      delayAlarm {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+      delayWarning {InstructionName := 'TONR_TIME'; LibVersion := '1.0'} : TONR_TIME;
+   END_VAR
+
+   VAR_TEMP 
+      alarmET : Time;
+      warningET : Time;
+   END_VAR
+
+   VAR CONSTANT 
+      lowRaw : Int := 0;
+      highRaw : Int := 27648;
+      lowEng : Int := 0;
+      highEng : Int := 20000;
+      zeroValue : Int := 4000;
+   END_VAR
+
+
+BEGIN
+	#pvEng := SCALE_X_INT(MIN := #lowEng,
+	                     VALUE := NORM_X_LREAL(MIN := #lowRaw,
+	                                           VALUE := #pvIn,
+	                                           MAX := #highRaw),
+	                     MAX := #highEng);
+	
+	#pvMa := INT_TO_REAL(IN := #pvEng) / 1000.0;
+	
+	IF #pvEng < 4000 THEN
+	    #pvScaled := 0.0;
+	ELSE
+	    #pvScaled := SCALE_X_REAL(MIN := #lowScale,
+	                              VALUE := NORM_X_LREAL(MIN := #zeroValue,
+	                                                    VALUE := #pvEng,
+	                                                    MAX := #highEng),
+	                              MAX := #highScale);
+	END_IF;
+	
+	IF #pvScaled >= #hAlarm THEN
+	    #delayAlarm(IN := true,
+	                PT := #dbTime,
+	                ET => #alarmET,
+	                    Q => #alarm);
+	ELSE
+	    #delayAlarm(IN := FALSE,
+	                PT := #dbTime);
+	    #alarm := false;
+	END_IF;
+	
+	IF #pvScaled >= #hWarning AND NOT #alarm THEN
+	    #delayWarning(IN := TRUE,
+	                  PT := #dbTime,
+	                  ET => #warningET,
+	                  Q => #warning);
+	ELSE
+	    #delayWarning(IN := FALSE,
+	                  PT := #dbTime);
+	    #warning := FALSE;
+	END_IF;
+	
+	IF #pvScaled < #hWarning THEN
+	    #delayWarning(IN := FALSE,
+	                  PT := #dbTime,
+	                  R := true);
+	END_IF;
+	                  
+	
+	
+	
+END_FUNCTION_BLOCK
+

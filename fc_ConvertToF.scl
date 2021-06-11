@@ -1,0 +1,16 @@
+﻿FUNCTION "fc_ConvertToF" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      celius : Real;
+   END_VAR
+
+   VAR_OUTPUT 
+      fahrenheit : Real;
+   END_VAR
+
+
+BEGIN
+	#fahrenheit := (#celius * 1.8) + 32;
+END_FUNCTION
+
